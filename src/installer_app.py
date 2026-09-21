@@ -2,11 +2,14 @@
 from __future__ import annotations
 import os, shutil, sys, threading, tkinter as tk
 import tempfile, time
+import tempfile, time
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from src.core.installer import ToolkitInstaller
 from src.core.plugin_installer import PluginInstaller
 from src.core.host_integration import HostIntegrator
+
+APP_VERSION="0.1.0-alpha"
 
 APP_VERSION="0.1.0-alpha"
 
@@ -61,11 +64,22 @@ class InstallerApp:
     def start_install(self):
         self.install_root=Path(self.path_var.get()).expanduser().resolve(); self._run(self.install_all)
     def install_all(self):
-        root=self.install_root; root.mkdir(parents=True,exist_ok=True); payload=root/"current"; payload.mkdir(parents=True,exist_ok=True); dst=payload/"src"; src=bundled_src()
-        if dst.exists(): shutil.rmtree(dst)
-        if src.is_dir(): shutil.copytree(src,dst)
-        r=ToolkitInstaller(root).install()
-        if not r.ok:return {"ok":False,"error":r.error}
+        root=self.install_root
+        root.mkdir(parents=True,exist_ok=True)
+        installer=ToolkitInstaller(root)
+        src=bundled_src()
+        if not src.is_dir():
+            return {"ok":False,"error":"Installer payload is missing."}
+        with tempfile.TemporaryDirectory(prefix="gameart-update-") as td:
+            payload=Path(td)/"payload"
+            shutil.copytree(src,payload)
+            version=f"toolkit-{APP_VERSION}-{time.strftime('%Y%m%d%H%M%S')}"
+            staged=installer.stage_update(payload,version)
+            if not staged.ok:
+                return {"ok":False,"error":staged.error}
+            activated=installer.activate(version)
+            if not activated.ok:
+                return {"ok":False,"error":activated.error}
         results=[]; pi=PluginInstaller(root)
         for n,v in self.vars.items():
             if v.get(): self.write(f"安装插件：{n}"); results.append(pi.install(n).__dict__)
