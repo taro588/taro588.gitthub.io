@@ -1,4 +1,4 @@
-"""Failure-safe third-party plugin registry."""
+"""Failure-safe third-party plugin registry and quarantine metadata."""
 from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
@@ -10,6 +10,8 @@ class PluginSpec:
     path: Path
     host: str = "shared"
     optional: bool = True
+    min_host_version: str | None = None
+    max_host_version: str | None = None
 
 @dataclass(frozen=True)
 class PluginHealth:
@@ -19,17 +21,28 @@ class PluginHealth:
     reason: str = ""
 
 class PluginRegistry:
-    def __init__(self, specs: Iterable[PluginSpec] = ()) -> None:
-        self._specs = {spec.name: spec for spec in specs}
+    def __init__(self,specs: Iterable[PluginSpec]=()):
+        self._specs={s.name:s for s in specs}
+        self._disabled:set[str]=set()
 
-    def register(self, spec: PluginSpec, *, replace: bool = False) -> None:
+    def register(self,spec:PluginSpec,*,replace=False):
         if not spec.name: raise ValueError("Plugin name cannot be empty.")
         if spec.name in self._specs and not replace: raise KeyError(f"Plugin already registered: {spec.name}")
-        self._specs[spec.name] = spec
+        self._specs[spec.name]=spec
 
-    def health(self) -> list[PluginHealth]:
+    def disable(self,name,reason=""):
+        if name not in self._specs: raise KeyError(name)
+        self._disabled.add(name)
+
+    def enable(self,name):
+        self._disabled.discard(name)
+
+    def health(self):
         result=[]
         for spec in self._specs.values():
+            if spec.name in self._disabled:
+                result.append(PluginHealth(spec.name,"disabled",str(spec.path),"Plugin is quarantined/disabled."))
+                continue
             try:
                 exists=spec.path.exists()
                 state="available" if exists else "missing"
