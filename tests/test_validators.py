@@ -4,8 +4,15 @@ from src.core.pipeline_guard import PipelineGuard
 
 def test_asset_inspector_handles_invalid_counts():
     report = inspect_asset({"name": "crate", "objects": "bad"})
-    assert report.ok
+    assert not report.ok
     assert any(i.code == "OBJECT_COUNT_INVALID" for i in report.issues)
+
+def test_asset_inspector_rejects_non_mapping():
+    try:
+        inspect_asset([])
+        assert False, "non-mapping input should fail"
+    except TypeError:
+        pass
 
 def test_validators_report_invalid_uv_and_materials():
     report = run_validators({"name": "crate", "triangles": 100, "uv_sets": "bad", "materials": None})
