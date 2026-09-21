@@ -32,7 +32,17 @@ class Launcher:
         self.installer=ToolkitInstaller(self.config.install_root)
 
     def health_check(self):
-        return {"installed":self.config.install_root.exists(),"install_root":str(self.config.install_root),"config_root":str(self.config.config_root)}
+        root=self.config.install_root
+        return {"installed":root.exists(),"install_root":str(root),"config_root":str(self.config.config_root),"writable":self._writable(root)}
+
+    def _writable(self,root):
+        try:
+            root.mkdir(parents=True,exist_ok=True)
+            probe=root/".write-test"
+            probe.write_text("ok",encoding="utf-8"); probe.unlink()
+            return True
+        except OSError:
+            return False
 
     def detect_dcc(self):
         found=[]
@@ -50,10 +60,17 @@ class Launcher:
     def doctor(self):
         dcc_api=self.dcc_status()
         failures=[n for n,i in dcc_api.items() if not i.get("connected")]
-        return {"status":"degraded" if failures else "ready","toolkit":"GameArt AI Toolkit","version":"0.1.0-alpha","python":platform.python_version(),"platform":platform.platform(),"launcher":self.health_check(),"environment_detection":[{"name":d.name,"version":d.version,"path":str(d.path)} for d in self.detect_dcc()],"dcc_api":dcc_api,"dcc_failures":failures,"plugins":[h.__dict__ for h in self.plugins.health()]}
-    
+        health=self.health_check()
+        if not health["writable"]:
+            failures.append("toolkit_storage")
+        return {"status":"degraded" if failures else "ready","toolkit":"GameArt AI Toolkit","version":"0.1.0-alpha","python":platform.python_version(),"platform":platform.platform(),"launcher":health,"environment_detection":[{"name":d.name,"version":d.version,"path":str(d.path)} for d in self.detect_dcc()],"dcc_api":dcc_api,"dcc_failures":failures,"plugins":[h.__dict__ for h in self.plugins.health()]}
+
     def repair(self):
-        return self.installer.repair().__dict__
+        result=self.installer.repair().__dict__
+        if result.get("ok"):
+            try: self.config.config_root.mkdir(parents=True,exist_ok=True)
+            except OSError as exc: result.update(ok=False,error=f"{type(exc).__name__}: {exc}")
+        return result
 
     def start(self):
         return {"status":"ready",**self.health_check()}
