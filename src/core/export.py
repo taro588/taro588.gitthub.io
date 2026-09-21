@@ -23,6 +23,12 @@ def safe_export(exporter: Callable[[], Any], path: str | Path, format_name: str)
         target=validate_export_path(path)
         target.parent.mkdir(parents=True, exist_ok=True)
         result=exporter()
+        if not target.exists():
+            return ExportResult(
+                False, format_name, str(target),
+                "Exporter completed but did not create the requested output file.",
+                {"result": result},
+            )
         return ExportResult(True, format_name, str(target), metadata={"result": result})
     except Exception as exc:
         return ExportResult(False, format_name, str(path), f"{type(exc).__name__}: {exc}")
