@@ -33,3 +33,7 @@ def test_plugin_installer_import_without_git_operation():
     out=run("-c","from src.core.plugin_installer import PluginInstaller; print(PluginInstaller('x').resolve('texture-importer')['host'])")
     assert out.returncode==0, out.stderr
     assert out.stdout.strip()=="maya"
+
+def test_host_integration_import_without_dcc():
+    out=run("-c","from src.core.host_integration import HostIntegrator; print(HostIntegrator('x').root.name)")
+    assert out.returncode==0, out.stderr
