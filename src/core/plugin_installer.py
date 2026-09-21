@@ -133,6 +133,7 @@ class PluginInstaller:
                 os.replace(checkout, destination)
                 manifest = {
                     "name": name,
+                    "state": "installed",
                     "host": host,
                     "source": source,
                     "branch": branch,
