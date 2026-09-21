@@ -17,10 +17,18 @@ def test_task_lifecycle():
 
 def test_pipeline_isolates_optional_stage():
     p = Pipeline("test")
-    p.add_stage("optional", lambda: 1, required=False)
+    p.add_stage("optional", lambda: (_ for _ in ()).throw(RuntimeError("optional")), required=False)
     p.add_stage("required", lambda: 2)
     out = p.run()
     assert out["ok"]
+
+def test_pipeline_rejects_invalid_stage():
+    p = Pipeline("test")
+    try:
+        p.add_stage("", lambda: 1)
+        assert False
+    except ValueError:
+        pass
 
 def test_registry():
     r = Registry()
