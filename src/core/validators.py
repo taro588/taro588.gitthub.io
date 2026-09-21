@@ -37,11 +37,12 @@ def validate_material(data: dict[str, Any], report: InspectionReport) -> None:
                 report.add("MATERIAL_MISSING", "warning", "No material is reported.", "materials")
 
 def run_validators(data: dict[str, Any], validators: list[Validator] | None = None) -> InspectionReport:
+    if not isinstance(data, dict):
+        raise TypeError("Validator input must be a dictionary.")
     report = InspectionReport(str(data.get("name") or "UnnamedAsset"))
-    validators = validators or [validate_mesh, validate_uv, validate_material]
-    for validator in validators:
+    for validator in validators or [validate_mesh, validate_uv, validate_material]:
         try:
             validator(data, report)
         except Exception as exc:
-            report.add("VALIDATOR_FAILED", "error", f"{validator.__name__} failed: {type(exc).__name__}: {exc}")
+            report.add("VALIDATOR_FAILED", "error", f"{getattr(validator, '__name__', 'validator')} failed: {type(exc).__name__}: {exc}")
     return report
