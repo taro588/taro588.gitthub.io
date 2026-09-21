@@ -7,6 +7,8 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -14,7 +16,7 @@ jobs:
           python-version: "3.11"
       - name: Install build dependencies
         run: python -m pip install -U pip pyinstaller pytest
-      - name: Run installer-related tests
+      - name: Run installer tests
         run: python -m pytest -q tests/test_startup_imports.py tests/test_host_integration.py tests/test_plugin_installer.py
       - name: Build EXE
         run: pyinstaller --clean --noconfirm installer.spec
@@ -24,8 +26,14 @@ jobs:
           if (!(Test-Path "dist/GameArtToolkitInstaller.exe")) { throw "Installer EXE was not produced." }
           $size=(Get-Item "dist/GameArtToolkitInstaller.exe").Length
           if ($size -lt 1000000) { throw "Installer EXE is unexpectedly small: $size bytes" }
-      - name: Upload installer
+      - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
           name: GameArtToolkitInstaller-Windows
           path: dist/GameArtToolkitInstaller.exe
+      - name: Publish tagged release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/GameArtToolkitInstaller.exe
+          generate_release_notes: true
