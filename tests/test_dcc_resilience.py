@@ -16,6 +16,12 @@ class HealthyAdapter(DCCAdapter):
         return True
     def scene_info(self):
         return {"objects": 0}
+    def ping(self, value="ok"):
+        return {"value": value}
+
+class BrokenOperationAdapter(HealthyAdapter):
+    def ping(self, value="ok"):
+        raise RuntimeError("operation failed")
 
 def test_manager_isolates_broken_dcc():
     manager = DCCManager()
@@ -27,3 +33,28 @@ def test_manager_isolates_broken_dcc():
     status = manager.status()
     assert status["broken"]["connected"] is False
     assert status["healthy"]["connected"] is True
+
+def test_operation_failure_isolated():
+    manager = DCCManager()
+    manager.register("broken", DCCSession(BrokenOperationAdapter()))
+    manager.connect_all()
+    result = manager.execute("broken", "ping")
+    assert result["ok"] is False
+    assert "operation failed" in result["error"]
+
+def test_unknown_operation_isolated():
+    manager = DCCManager()
+    manager.register("healthy", DCCSession(HealthyAdapter()))
+    manager.connect_all()
+    result = manager.execute("healthy", "does_not_exist")
+    assert result["ok"] is False
+    assert "Unsupported DCC operation" in result["error"]
+
+def test_duplicate_registration_requires_replace():
+    manager = DCCManager()
+    manager.register("healthy", DCCSession(HealthyAdapter()))
+    try:
+        manager.register("healthy", DCCSession(HealthyAdapter()))
+        assert False, "duplicate registration should fail"
+    except KeyError:
+        pass
