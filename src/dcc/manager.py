@@ -18,6 +18,10 @@ class DCCManager:
             raise KeyError(f"DCC already registered: {name}")
         self._sessions[name] = session
 
+    def get(self, name: str) -> DCCSession | None:
+        """Return a registered session without exposing the internal mapping."""
+        return self._sessions.get(name)
+
     def connect_all(self) -> dict[str, bool]:
         result = {}
         for name, session in self._sessions.items():
