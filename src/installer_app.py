@@ -1,7 +1,7 @@
 """Standalone one-click Windows installer UI."""
 from __future__ import annotations
 import os, shutil, sys, threading, tkinter as tk
-import tempfile, time, importlib
+import tempfile, time, importlib, json, urllib.request
 import tempfile, time
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
@@ -10,6 +10,7 @@ from src.core.plugin_installer import PluginInstaller
 from src.core.host_integration import HostIntegrator
 
 APP_VERSION="0.1.0-alpha"
+UPDATE_URL="https://api.github.com/repos/taro588/taro588.gitthub.io/releases/latest"
 
 APP_VERSION="0.1.0-alpha"
 
@@ -43,7 +44,7 @@ class InstallerApp:
         self.btn=ttk.Button(b,text="一键安装 / 更新",command=self.start_install); self.btn.pack(side="left"); ttk.Button(b,text="回滚上一版本",command=lambda:self._run(self.rollback)).pack(side="left",padx=6)
         ttk.Button(b,text="修复",command=lambda:self._run(self.repair)).pack(side="left",padx=6)
         ttk.Button(b,text="卸载",command=self.start_uninstall).pack(side="left")
-        ttk.Button(b,text="检查环境",command=lambda:self._run(self.doctor)).pack(side="left",padx=6)
+        ttk.Button(b,text="检查环境",command=lambda:self._run(self.doctor)).pack(side="left",padx=6); ttk.Button(b,text="检查更新",command=lambda:self._run(self.check_update)).pack(side="left")
         ttk.Button(b,text="退出",command=self.root.destroy).pack(side="right")
         self.progress=ttk.Progressbar(o,mode="indeterminate"); self.progress.pack(fill="x"); ttk.Label(o,textvariable=self.status).pack(fill="x",pady=8)
         self.log=tk.Text(o,height=18); self.log.pack(fill="both",expand=True)
@@ -106,6 +107,16 @@ class InstallerApp:
         except Exception as exc:
             return {"ok":False,"checks":checks,"error":f"{type(exc).__name__}: {exc}"}
         return {"ok":all(checks.values()),"checks":checks}
+
+    def check_update(self):
+        try:
+            req=urllib.request.Request(UPDATE_URL,headers={"Accept":"application/vnd.github+json","User-Agent":"GameArtToolkit"})
+            with urllib.request.urlopen(req,timeout=8) as response:
+                data=json.load(response)
+            latest=str(data.get("tag_name","")).lstrip("v")
+            return {"ok":bool(latest),"current":APP_VERSION,"latest":latest,"update_available":latest!=APP_VERSION,"release_url":data.get("html_url")}
+        except Exception as exc:
+            return {"ok":False,"current":APP_VERSION,"error":f"{type(exc).__name__}: {exc}"}
 
     def startup_smoke_test(self):
         try:
