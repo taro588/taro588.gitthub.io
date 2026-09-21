@@ -80,3 +80,21 @@ def test_rollback_rolls_back_if_state_write_fails(tmp_path, monkeypatch):
     assert not result.ok
     assert (root/"current"/"marker").read_text()=="v2"
     assert i._read_current_version()=="v2"
+
+
+def test_manifest_rejects_unexpected_file(tmp_path):
+    root=tmp_path/"toolkit"; i=ToolkitInstaller(root); i.install()
+    src=tmp_path/"v1"; src.mkdir(); (src/"marker").write_text("good")
+    assert i.stage_update(src,"v1").ok
+    (root/"versions"/"v1"/"extra.bin").write_text("unexpected")
+    result=i.activate("v1")
+    assert not result.ok and "unexpected files" in result.error
+
+def test_manifest_rejects_path_traversal(tmp_path):
+    root=tmp_path/"toolkit"; i=ToolkitInstaller(root); i.install()
+    src=tmp_path/"v1"; src.mkdir(); (src/"marker").write_text("good")
+    assert i.stage_update(src,"v1").ok
+    manifest=root/"versions"/"v1"/"manifest.json"
+    manifest.write_text('{"files":{"../escape":"deadbeef"}}')
+    result=i.activate("v1")
+    assert not result.ok and "Invalid manifest path" in result.error
