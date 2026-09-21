@@ -8,7 +8,7 @@ def _json_default(value): return str(value)
 
 def main() -> None:
     parser=argparse.ArgumentParser(prog="gameart")
-    parser.add_argument("command",choices=["doctor","detect","start","install","repair","update","activate","rollback","uninstall","plugin-install","plugin-uninstall","plugin-list"],nargs="?",default="start")
+    parser.add_argument("command",choices=["doctor","detect","start","install","repair","update","activate","rollback","uninstall","plugin-install","plugin-uninstall","plugin-list","host-register","host-unregister"],nargs="?",default="start")
     parser.add_argument("path",nargs="?",help="Update source directory for 'update'.")
     parser.add_argument("--version",dest="version",help="Version for update/activate/rollback.")
     args=parser.parse_args()
@@ -47,6 +47,16 @@ def main() -> None:
         payload=launcher.plugin_installer.uninstall(args.version).__dict__
     elif args.command=="plugin-list":
         payload=launcher.plugin_installer.installed()
+    elif args.command=="host-register":
+        from .core.host_integration import HostIntegrator
+        integrator=HostIntegrator(launcher.config.install_root)
+        host=(args.version or "maya").lower()
+        payload=(integrator.register_maya() if host=="maya" else integrator.register_max()).__dict__
+    elif args.command=="host-unregister":
+        from .core.host_integration import HostIntegrator
+        integrator=HostIntegrator(launcher.config.install_root)
+        host=(args.version or "maya").lower()
+        payload=(integrator.unregister_maya() if host=="maya" else integrator.unregister_max()).__dict__
     elif args.command=="uninstall":
         payload=launcher.installer.uninstall().__dict__
     print(json.dumps(payload,indent=2,ensure_ascii=False,default=_json_default))
