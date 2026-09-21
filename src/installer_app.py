@@ -1,7 +1,7 @@
 """Standalone one-click Windows installer UI."""
 from __future__ import annotations
 import os, shutil, sys, threading, tkinter as tk
-import tempfile, time
+import tempfile, time, importlib
 import tempfile, time
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
@@ -87,8 +87,24 @@ class InstallerApp:
         if self.host_vars["maya"].get(): hosts["maya"]=hi.register_maya().__dict__
         if self.host_vars["3ds_max"].get(): hosts["3ds_max"]=hi.register_max().__dict__
         ok=all(x["ok"] for x in results) and all(x["ok"] for x in hosts.values())
-        if ok:self._write_state(root)
-        return {"ok":ok,"installed":ok,"root":str(root),"plugins":results,"hosts":hosts}
+        check=self.post_install_check(root) if ok else {"ok":False,"error":"Plugin or host installation failed."}
+        if ok and check["ok"]: self._write_state(root)
+        elif ok and not check["ok"]:
+            self.write("安装后自检失败，开始回滚…")
+            rb=installer.rollback()
+            return {"ok":False,"installed":False,"rolled_back":rb.ok,"rollback_error":rb.error,"checks":check}
+        return {"ok":ok,"installed":ok,"root":str(root),"plugins":results,"hosts":hosts,"checks":check}
+    def post_install_check(self, root):
+        checks = {}
+        try:
+            checks["installer_core_import"] = importlib.import_module("src.core.installer") is not None
+            checks["plugin_installer_import"] = importlib.import_module("src.core.plugin_installer") is not None
+            checks["host_integration_import"] = importlib.import_module("src.core.host_integration") is not None
+            checks["payload_present"] = (root / "current").exists()
+        except Exception as exc:
+            return {"ok":False,"checks":checks,"error":f"{type(exc).__name__}: {exc}"}
+        return {"ok":all(checks.values()),"checks":checks}
+
     def _write_state(self,root):
         (root/"installed.json").write_text('{"product":"GameArt AI Toolkit","installed":true}\n',encoding="utf-8")
     def rollback(self):
