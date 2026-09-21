@@ -25,8 +25,7 @@ class ToolkitInstaller:
         return target
 
     def _manifest(self,directory):
-        directory=self._owned(directory)
-        files={}
+        directory=self._owned(directory); files={}
         for p in sorted(directory.rglob("*")):
             if p.is_file() and p.name!="manifest.json":
                 files[str(p.relative_to(directory))]=hashlib.sha256(p.read_bytes()).hexdigest()
@@ -48,11 +47,7 @@ class ToolkitInstaller:
         try:
             source=Path(source).expanduser().resolve()
             if not source.is_dir(): raise ValueError("Update source directory does not exist.")
-            try:
-                source.relative_to(self.root)
-                raise ValueError("Update source must not be inside the Toolkit root.")
-            except ValueError as exc:
-                if "inside the Toolkit root" in str(exc): raise
+            if source==self.root or self.root in source.parents: raise ValueError("Update source must not be inside the Toolkit root.")
             self.install(); version=version or time.strftime("%Y%m%d-%H%M%S")
             target=self.versions/version
             if target.exists(): raise ValueError(f"Version already exists: {version}")
@@ -80,8 +75,9 @@ class ToolkitInstaller:
             staging=Path(tempfile.mkdtemp(prefix=".activate-",dir=self.root))
             staged_current=staging/"current"
             shutil.copytree(target,staged_current,ignore=shutil.ignore_patterns("manifest.json"))
-            old_current=self.backups/(time.strftime("%Y%m%d-%H%M%S-%f")+"-previous")
-            if self.current.exists(): os.replace(self.current,old_current)
+            if self.current.exists():
+                old_current=self.backups/(time.strftime("%Y%m%d-%H%M%S-%f")+"-previous")
+                os.replace(self.current,old_current)
             os.replace(staged_current,self.current)
             self._write_state(version)
             return InstallResult(True,"activate",str(self.root),version=version)
