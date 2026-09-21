@@ -1,23 +1,32 @@
-"""CLI entry point for launcher operations."""
-import argparse
-from pathlib import Path
-from .launcher import Launcher, LauncherConfig
+from __future__ import annotations
 
-def main():
-    parser = argparse.ArgumentParser(prog="gameart-launcher")
-    parser.add_argument("command", choices=["doctor", "detect", "start", "repair"])
+import argparse
+import json
+
+from .launcher import Launcher
+from .launcher_gui import LauncherApp
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(prog="gameart")
+    parser.add_argument("command", choices=["doctor", "detect", "start", "repair"], nargs="?", default="start")
     args = parser.parse_args()
-    root = Path.cwd()
-    launcher = Launcher(LauncherConfig(root, root / "config"))
+    launcher = Launcher()
+
+    if args.command == "start":
+        LauncherApp(launcher).run()
+        return
+
+    if args.command == "detect":
+        print(json.dumps([d.__dict__ for d in launcher.detect_dcc()], indent=2))
+        return
+
     if args.command == "doctor":
-        print(launcher.health_check())
-    elif args.command == "detect":
-        for dcc in launcher.detect_dcc():
-            print(f"{dcc.name}: {dcc.path}")
-    elif args.command == "start":
-        print(launcher.start())
-    else:
-        print("Repair mode: validate Toolkit-owned files and DCC registration.")
+        print(json.dumps(launcher.doctor(), indent=2))
+        return
+
+    print(json.dumps(launcher.repair(), indent=2))
+
 
 if __name__ == "__main__":
     main()

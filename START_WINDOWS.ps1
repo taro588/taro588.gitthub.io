@@ -1,0 +1,8 @@
+Set-Location $PSScriptRoot
+if (-not (Test-Path ".venv\Scripts\python.exe")) {
+    py -3 -m venv .venv
+    if ($LASTEXITCODE -ne 0) { throw "Python 3.10+ is required." }
+}
+& ".venv\Scripts\python.exe" -m pip install -e . --quiet
+if ($LASTEXITCODE -ne 0) { throw "Toolkit installation failed." }
+& ".venv\Scripts\python.exe" -m src.launcher_cli start
