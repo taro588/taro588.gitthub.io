@@ -226,6 +226,10 @@ if TOOLKIT_ROOT:
                 shutil.rmtree(destination)
             if manifest.exists():
                 manifest.unlink()
+            if host == "maya":
+                self.host.unregister_maya()
+            elif host == "3ds_max":
+                self.host.unregister_max()
             return PluginInstallResult(True, name, str(destination))
         except Exception as exc:
             return PluginInstallResult(False, name, str(self.plugin_root), f"{type(exc).__name__}: {exc}")
