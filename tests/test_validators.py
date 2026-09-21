@@ -14,6 +14,13 @@ def test_asset_inspector_rejects_non_mapping():
     except TypeError:
         pass
 
+def test_validators_reject_non_mapping():
+    try:
+        run_validators([])
+        assert False, "non-mapping input should fail"
+    except TypeError:
+        pass
+
 def test_validators_report_invalid_uv_and_materials():
     report = run_validators({"name": "crate", "triangles": 100, "uv_sets": "bad", "materials": None})
     assert not report.ok
