@@ -24,13 +24,12 @@ class ToolkitInstaller:
         except ValueError as exc: raise ValueError("Refusing to operate outside Toolkit root.") from exc
         return target
 
-    def _manifest(self, directory):
+    def _manifest(self,directory):
         directory=self._owned(directory)
         files={}
         for p in sorted(directory.rglob("*")):
-            if p.is_file() and p.name != "manifest.json":
-                h=hashlib.sha256(p.read_bytes()).hexdigest()
-                files[str(p.relative_to(directory))]=h
+            if p.is_file() and p.name!="manifest.json":
+                files[str(p.relative_to(directory))]=hashlib.sha256(p.read_bytes()).hexdigest()
         return {"files":files}
 
     def _write_state(self,version):
@@ -49,22 +48,22 @@ class ToolkitInstaller:
         try:
             source=Path(source).expanduser().resolve()
             if not source.is_dir(): raise ValueError("Update source directory does not exist.")
-            try: source.relative_to(self.root); raise ValueError("Update source must not be inside the Toolkit root.")
+            try:
+                source.relative_to(self.root)
+                raise ValueError("Update source must not be inside the Toolkit root.")
             except ValueError as exc:
                 if "inside the Toolkit root" in str(exc): raise
             self.install(); version=version or time.strftime("%Y%m%d-%H%M%S")
             target=self.versions/version
             if target.exists(): raise ValueError(f"Version already exists: {version}")
             shutil.copytree(source,target)
-            manifest=self._manifest(target)
-            (target/"manifest.json").write_text(json.dumps(manifest,indent=2),encoding="utf-8")
+            (target/"manifest.json").write_text(json.dumps(self._manifest(target),indent=2),encoding="utf-8")
             return InstallResult(True,"stage_update",str(self.root),version=version)
         except Exception as exc: return InstallResult(False,"stage_update",str(self.root),f"{type(exc).__name__}: {exc}",version)
 
     def _verify(self,target):
-        manifest=target/"manifest.json"
-        if not manifest.is_file(): return False,"Version manifest is missing."
-        data=json.loads(manifest.read_text(encoding="utf-8"))
+        try: data=json.loads((target/"manifest.json").read_text(encoding="utf-8"))
+        except Exception as exc: return False,f"Invalid version manifest: {type(exc).__name__}: {exc}"
         for rel,digest in data.get("files",{}).items():
             p=target/rel
             if not p.is_file(): return False,f"Manifest file missing: {rel}"
@@ -72,6 +71,7 @@ class ToolkitInstaller:
         return True,None
 
     def activate(self,version):
+        staging=None; old_current=None
         try:
             target=self._owned(self.versions/version)
             if not target.is_dir(): raise ValueError(f"Version does not exist: {version}")
@@ -80,20 +80,18 @@ class ToolkitInstaller:
             staging=Path(tempfile.mkdtemp(prefix=".activate-",dir=self.root))
             staged_current=staging/"current"
             shutil.copytree(target,staged_current,ignore=shutil.ignore_patterns("manifest.json"))
-            old_current=None
-            if self.current.exists():
-                old_current=self.backups/(time.strftime("%Y%m%d-%H%M%S") + "-previous")
-                os.replace(self.current,old_current)
-            try:
-                os.replace(staged_current,self.current)
-            except Exception:
-                if old_current is not None and old_current.exists(): os.replace(old_current,self.current)
-                raise
-            shutil.rmtree(staging,ignore_errors=True)
+            old_current=self.backups/(time.strftime("%Y%m%d-%H%M%S-%f")+"-previous")
+            if self.current.exists(): os.replace(self.current,old_current)
+            os.replace(staged_current,self.current)
             self._write_state(version)
             return InstallResult(True,"activate",str(self.root),version=version)
         except Exception as exc:
+            if old_current is not None and old_current.exists() and not self.current.exists():
+                try: os.replace(old_current,self.current)
+                except OSError: pass
             return InstallResult(False,"activate",str(self.root),f"{type(exc).__name__}: {exc}",version)
+        finally:
+            if staging: shutil.rmtree(staging,ignore_errors=True)
 
     def rollback(self,version=None):
         try:
