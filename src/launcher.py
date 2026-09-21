@@ -29,14 +29,19 @@ class Launcher:
         self.dcc.register("3ds_max", DCCSession(MaxAdapter()))
 
     def health_check(self):
-        return {"installed": self.config.install_root.exists(), "install_root": str(self.config.install_root)}
+        return {
+            "installed": self.config.install_root.exists(),
+            "install_root": str(self.config.install_root),
+            "config_root": str(self.config.config_root),
+        }
 
     def detect_dcc(self):
         found = []
         for name, env in (("Maya", "MAYA_LOCATION"), ("3ds Max", "ADSK_3DSMAX_ROOT")):
             value = os.environ.get(env)
             if value:
-                found.append(DCCInstallation(name, "detected", Path(value)))
+                path = Path(value).expanduser()
+                found.append(DCCInstallation(name, "detected" if path.exists() else "environment_only", path))
         return found
 
     def dcc_status(self):
@@ -45,7 +50,20 @@ class Launcher:
 
     def doctor(self):
         detections = self.detect_dcc()
-        return {"status": "ready", "toolkit": "GameArt AI Toolkit", "version": "0.1.0-alpha", "python": platform.python_version(), "platform": platform.platform(), "launcher": self.health_check(), "environment_detection": [{"name": d.name, "version": d.version, "path": str(d.path)} for d in detections], "dcc_api": self.dcc_status()}
+        dcc_api = self.dcc_status()
+        launcher = self.health_check()
+        dcc_failures = [name for name, info in dcc_api.items() if not info.get("connected")]
+        return {
+            "status": "degraded" if dcc_failures else "ready",
+            "toolkit": "GameArt AI Toolkit",
+            "version": "0.1.0-alpha",
+            "python": platform.python_version(),
+            "platform": platform.platform(),
+            "launcher": launcher,
+            "environment_detection": [{"name": d.name, "version": d.version, "path": str(d.path)} for d in detections],
+            "dcc_api": dcc_api,
+            "dcc_failures": dcc_failures,
+        }
 
     def repair(self):
         self.config.config_root.mkdir(parents=True, exist_ok=True)
