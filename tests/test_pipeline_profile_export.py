@@ -15,3 +15,10 @@ def test_safe_export_contains_failure(tmp_path):
     out=safe_export(lambda: 1/0, tmp_path/"x.fbx", "fbx")
     assert not out.ok
     assert "ZeroDivisionError" in out.error
+
+def test_export_rejects_directory(tmp_path):
+    try:
+        validate_export_path(tmp_path)
+        assert False
+    except ValueError:
+        pass
