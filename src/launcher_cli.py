@@ -8,7 +8,7 @@ def _json_default(value): return str(value)
 
 def main() -> None:
     parser=argparse.ArgumentParser(prog="gameart")
-    parser.add_argument("command",choices=["doctor","detect","start","install","repair","update","activate","rollback","uninstall"],nargs="?",default="start")
+    parser.add_argument("command",choices=["doctor","detect","start","install","repair","update","activate","rollback","uninstall","plugin-install","plugin-uninstall","plugin-list"],nargs="?",default="start")
     parser.add_argument("path",nargs="?",help="Update source directory for 'update'.")
     parser.add_argument("--version",dest="version",help="Version for update/activate/rollback.")
     args=parser.parse_args()
@@ -37,6 +37,16 @@ def main() -> None:
         payload=launcher.installer.activate(args.version).__dict__
     elif args.command=="rollback":
         payload=launcher.installer.rollback(args.version).__dict__
+    elif args.command=="plugin-install":
+        if not args.version:
+            parser.error("plugin-install requires --version with the plugin name")
+        payload=launcher.plugin_installer.install(args.version).__dict__
+    elif args.command=="plugin-uninstall":
+        if not args.version:
+            parser.error("plugin-uninstall requires --version with the plugin name")
+        payload=launcher.plugin_installer.uninstall(args.version).__dict__
+    elif args.command=="plugin-list":
+        payload=launcher.plugin_installer.installed()
     elif args.command=="uninstall":
         payload=launcher.installer.uninstall().__dict__
     print(json.dumps(payload,indent=2,ensure_ascii=False,default=_json_default))
