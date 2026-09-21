@@ -18,7 +18,6 @@
 	path = plugins/max/rename-lowhigh-proximity
 	url = https://github.com/Khanzino3d/maxscript-rename-lowhigh-proximity.git
 	branch = main
-
 [submodule "plugins/shared/fal-texture-pbr-generator"]
 	path = plugins/shared/fal-texture-pbr-generator
 	url = https://github.com/lovisdotio/fal-texture-pbr-generator.git
