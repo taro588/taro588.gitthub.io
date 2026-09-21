@@ -1,4 +1,4 @@
-"""Failure-safe third-party plugin registry and quarantine metadata."""
+"""Failure-safe third-party plugin registry with compatibility checks."""
 from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
@@ -20,36 +20,51 @@ class PluginHealth:
     path: str
     reason: str = ""
 
-class PluginRegistry:
-    def __init__(self,specs: Iterable[PluginSpec]=()):
-        self._specs={s.name:s for s in specs}
-        self._disabled:set[str]=set()
+def _version_tuple(value):
+    if not value: return ()
+    try: return tuple(int(x) for x in str(value).split(".") if x != "")
+    except ValueError: return ()
 
-    def register(self,spec:PluginSpec,*,replace=False):
+class PluginRegistry:
+    def __init__(self, specs: Iterable[PluginSpec] = ()):
+        self._specs = {s.name: s for s in specs}
+        self._disabled = set()
+
+    def register(self, spec, *, replace=False):
         if not spec.name: raise ValueError("Plugin name cannot be empty.")
         if spec.name in self._specs and not replace: raise KeyError(f"Plugin already registered: {spec.name}")
-        self._specs[spec.name]=spec
+        self._specs[spec.name] = spec
 
-    def disable(self,name,reason=""):
+    def disable(self, name, reason=""):
         if name not in self._specs: raise KeyError(name)
         self._disabled.add(name)
 
-    def enable(self,name):
+    def enable(self, name):
         self._disabled.discard(name)
 
-    def health(self):
-        result=[]
+    def compatible(self, name, host_version):
+        spec = self._specs[name]
+        v = _version_tuple(host_version)
+        if spec.min_host_version and v and v < _version_tuple(spec.min_host_version): return False
+        if spec.max_host_version and v and v > _version_tuple(spec.max_host_version): return False
+        return True
+
+    def health(self, host_versions=None):
+        result = []
+        host_versions = host_versions or {}
         for spec in self._specs.values():
             if spec.name in self._disabled:
-                result.append(PluginHealth(spec.name,"disabled",str(spec.path),"Plugin is quarantined/disabled."))
+                result.append(PluginHealth(spec.name, "disabled", str(spec.path), "Plugin is quarantined/disabled."))
                 continue
             try:
-                exists=spec.path.exists()
-                state="available" if exists else "missing"
-                reason="" if exists else "Plugin path does not exist."
+                if spec.host in host_versions and not self.compatible(spec.name, host_versions[spec.host]):
+                    result.append(PluginHealth(spec.name, "incompatible", str(spec.path), "Host version is outside plugin compatibility range."))
+                    continue
+                exists = spec.path.exists()
+                result.append(PluginHealth(spec.name, "available" if exists else "missing", str(spec.path), "" if exists else "Plugin path does not exist."))
             except OSError as exc:
-                state,reason="error",f"{type(exc).__name__}: {exc}"
-            result.append(PluginHealth(spec.name,state,str(spec.path),reason))
-        return sorted(result,key=lambda x:x.name)
+                result.append(PluginHealth(spec.name, "error", str(spec.path), f"{type(exc).__name__}: {exc}"))
+        return sorted(result, key=lambda x: x.name)
 
-    def names(self): return sorted(self._specs)
+    def names(self):
+        return sorted(self._specs)
