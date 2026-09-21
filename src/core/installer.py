@@ -28,7 +28,7 @@ class ToolkitInstaller:
         directory=self._owned(directory)
         files={}
         for p in sorted(directory.rglob("*")):
-            if p.is_file():
+            if p.is_file() and p.name != "manifest.json":
                 h=hashlib.sha256(p.read_bytes()).hexdigest()
                 files[str(p.relative_to(directory))]=h
         return {"files":files}
