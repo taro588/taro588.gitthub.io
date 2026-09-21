@@ -1,0 +1,16 @@
+[submodule "plugins/maya/maya-usd"]
+	path = plugins/maya/maya-usd
+	url = https://github.com/Autodesk/maya-usd.git
+	branch = dev
+[submodule "plugins/max/3dsmax-usd"]
+	path = plugins/max/3dsmax-usd
+	url = https://github.com/Autodesk/3dsmax-usd.git
+	branch = dev
+[submodule "plugins/maya/gt-tools"]
+	path = plugins/maya/gt-tools
+	url = https://github.com/TrevisanGMW/gt-tools.git
+	branch = release
+[submodule "plugins/max/Py3dsMax"]
+	path = plugins/max/Py3dsMax
+	url = https://github.com/blurstudio/Py3dsMax.git
+	branch = master
