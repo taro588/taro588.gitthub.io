@@ -1,44 +1,24 @@
-[submodule "plugins/max/BsMax"]
-	path = plugins/max/BsMax
-	url = https://github.com/NevilArt/BsMax.git
+[submodule "plugins/maya/Unreal-Maya-Pipeline"]
+	path = plugins/maya/Unreal-Maya-Pipeline
+	url = https://github.com/arunprksm/Unreal-Maya-Pipeline.git
+	branch = main
+[submodule "plugins/max/3dsMax-Asset-Tools-for-Unreal-Engine"]
+	path = plugins/max/3dsMax-Asset-Tools-for-Unreal-Engine
+	url = https://github.com/dexise/3dsMax-Asset-Tools-for-Unreal-Engine.git
 	branch = master
-[submodule "plugins/maya/modelChecker"]
-	path = plugins/maya/modelChecker
-	url = https://github.com/JakobJK/modelChecker.git
+[submodule "plugins/maya/LOD-Generator-Tool-Maya"]
+	path = plugins/maya/LOD-Generator-Tool-Maya
+	url = https://github.com/NguyenNP-24/LOD-Generator-Tool-Maya.git
 	branch = main
-[submodule "plugins/maya/RoadKill"]
-	path = plugins/maya/RoadKill
-	url = https://github.com/monster-puppet/RoadKill.git
+[submodule "plugins/maya/Automated_LOD_Tool"]
+	path = plugins/maya/Automated_LOD_Tool
+	url = https://github.com/SaiiPrashanth/Automated_LOD_Tool.git
 	branch = main
-[submodule "plugins/maya/mayatk"]
-	path = plugins/maya/mayatk
-	url = https://github.com/m3trik/mayatk.git
-	branch = main
-[submodule "plugins/max/flowstate"]
-	path = plugins/max/flowstate
-	url = https://github.com/cl0nazepamm/flowstate.git
+[submodule "plugins/maya/LeeAutoExportFBX"]
+	path = plugins/maya/LeeAutoExportFBX
+	url = https://github.com/leetdvn/LeeAutoExportFBX.git
 	branch = master
-[submodule "plugins/max/AutoRemesher-Bridge"]
-	path = plugins/max/AutoRemesher-Bridge
-	url = https://github.com/imanshirani/3DsMax-bridge-for-AutoRemesher.git
+[submodule "plugins/max/3dsmax-fbx-conform-and-batch-render"]
+	path = plugins/max/3dsmax-fbx-conform-and-batch-render
+	url = https://github.com/Joyxt/3dsmax-fbx-conform_and_batch-render.git
 	branch = main
-[submodule "plugins/maya/froRetopo"]
-	path = plugins/maya/froRetopo
-	url = https://github.com/Froyok/froRetopo.git
-	branch = master
-[submodule "plugins/max/OPEN_KITBASH"]
-	path = plugins/max/OPEN_KITBASH
-	url = https://github.com/imanshirani/OPEN_KITBASH.git
-	branch = main
-[submodule "plugins/maya/Maya-SBTools"]
-	path = plugins/maya/Maya-SBTools
-	url = https://github.com/Amatsukast/Maya-SBTools.git
-	branch = master
-[submodule "plugins/maya/RizomUV-Maya-Bridge"]
-	path = plugins/maya/RizomUV-Maya-Bridge
-	url = https://github.com/adevra/RizomUV-2024-Maya-Bridge.git
-	branch = main
-[submodule "plugins/max/3dsmax-mcp"]
-	path = plugins/max/3dsmax-mcp
-	url = https://github.com/cl0nazepamm/3dsmax-mcp.git
-	branch = master
