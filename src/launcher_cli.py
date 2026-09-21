@@ -21,7 +21,6 @@ def main() -> None:
         except Exception as exc:
             print(json.dumps({"status":"degraded","error":f"{type(exc).__name__}: {exc}"},ensure_ascii=False))
         return
-
     if args.command=="detect":
         payload=[{"name":d.name,"version":d.version,"path":str(d.path)} for d in launcher.detect_dcc()]
     elif args.command=="doctor":
@@ -31,12 +30,10 @@ def main() -> None:
     elif args.command=="repair":
         payload=launcher.installer.repair().__dict__
     elif args.command=="update":
-        if not args.path:
-            parser.error("update requires an update source directory")
+        if not args.path: parser.error("update requires an update source directory")
         payload=launcher.installer.stage_update(args.path,args.version).__dict__
     elif args.command=="activate":
-        if not args.version:
-            parser.error("activate requires --version")
+        if not args.version: parser.error("activate requires --version")
         payload=launcher.installer.activate(args.version).__dict__
     elif args.command=="rollback":
         payload=launcher.installer.rollback(args.version).__dict__
