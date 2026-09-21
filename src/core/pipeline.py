@@ -15,6 +15,8 @@ class Pipeline:
     stages: list[PipelineStage] = field(default_factory=list)
 
     def add_stage(self, name: str, action: Callable[[], Any], required: bool = True) -> "Pipeline":
+        if not name or not callable(action):
+            raise ValueError("Pipeline stage requires a non-empty name and callable action.")
         self.stages.append(PipelineStage(name, action, required))
         return self
 
