@@ -1,8 +1,6 @@
-"""DCC adapter/session registry."""
+"""DCC adapter/session registry with failure isolation."""
 from __future__ import annotations
-
 from .session import DCCSession
-
 
 class DCCManager:
     def __init__(self) -> None:
@@ -12,7 +10,21 @@ class DCCManager:
         self._sessions[name] = session
 
     def connect_all(self) -> dict[str, bool]:
-        return {name: session.connect() for name, session in self._sessions.items()}
+        result = {}
+        for name, session in self._sessions.items():
+            try:
+                result[name] = session.connect()
+            except Exception as exc:
+                session.connected = False
+                session.last_error = str(exc)
+                result[name] = False
+        return result
 
     def status(self) -> dict[str, dict]:
-        return {name: session.info() for name, session in self._sessions.items()}
+        result = {}
+        for name, session in self._sessions.items():
+            try:
+                result[name] = session.info()
+            except Exception as exc:
+                result[name] = {"dcc": name, "available": False, "connected": False, "error": str(exc)}
+        return result
