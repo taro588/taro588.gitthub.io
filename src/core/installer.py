@@ -68,15 +68,21 @@ class ToolkitInstaller:
                 raise ValueError("Update source directory does not exist.")
             if source == self.root or self.root in source.parents:
                 raise ValueError("Update source must not be inside the Toolkit root.")
-            self.install()
+            install_result = self.install()
+            if not install_result.ok:
+                raise RuntimeError(install_result.error or "Toolkit root could not be prepared.")
             version = version or time.strftime("%Y%m%d-%H%M%S")
-            target = self.versions / version
+            target = self._owned(self.versions / version)
             if target.exists():
                 raise ValueError(f"Version already exists: {version}")
-            shutil.copytree(source, target)
-            (target / "manifest.json").write_text(
-                json.dumps(self._manifest(target), indent=2), encoding="utf-8"
-            )
+            try:
+                shutil.copytree(source, target)
+                (target / "manifest.json").write_text(
+                    json.dumps(self._manifest(target), indent=2), encoding="utf-8"
+                )
+            except Exception:
+                shutil.rmtree(target, ignore_errors=True)
+                raise
             return InstallResult(True, "stage_update", str(self.root), version=version)
         except Exception as exc:
             return InstallResult(
@@ -89,10 +95,32 @@ class ToolkitInstaller:
             data = json.loads((target / "manifest.json").read_text(encoding="utf-8"))
         except Exception as exc:
             return False, f"Invalid version manifest: {type(exc).__name__}: {exc}"
-        for rel, digest in data.get("files", {}).items():
-            p = target / rel
+        files = data.get("files")
+        if not isinstance(files, dict):
+            return False, "Invalid version manifest: files must be an object."
+
+        expected = set(files)
+        actual = {
+            str(p.relative_to(target))
+            for p in target.rglob("*")
+            if p.is_file() and p.name != "manifest.json"
+        }
+        unexpected = sorted(actual - expected)
+        if unexpected:
+            return False, f"Manifest contains unexpected files: {unexpected[0]}"
+
+        for rel, digest in files.items():
+            if not isinstance(rel, str) or Path(rel).is_absolute():
+                return False, f"Invalid manifest path: {rel!r}"
+            p = (target / rel).resolve()
+            try:
+                p.relative_to(target)
+            except ValueError:
+                return False, f"Invalid manifest path: {rel!r}"
             if not p.is_file():
                 return False, f"Manifest file missing: {rel}"
+            if not isinstance(digest, str):
+                return False, f"Invalid checksum for: {rel}"
             if hashlib.sha256(p.read_bytes()).hexdigest() != digest:
                 return False, f"Manifest checksum mismatch: {rel}"
         return True, None
