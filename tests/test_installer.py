@@ -21,7 +21,7 @@ def test_update_source_cannot_be_inside_root(tmp_path):
     root=tmp_path/"toolkit"; ToolkitInstaller(root).install(); source=root/"versions"/"source"; source.mkdir(parents=True)
     assert not ToolkitInstaller(root).stage_update(source).ok
 
-def test_activate_verifies_manifest_and_rollback(tmp_path):
+def test_activate_and_rollback(tmp_path):
     root=tmp_path/"toolkit"; i=ToolkitInstaller(root); i.install()
     a=tmp_path/"v1"; a.mkdir(); (a/"marker").write_text("v1")
     b=tmp_path/"v2"; b.mkdir(); (b/"marker").write_text("v2")
@@ -29,12 +29,13 @@ def test_activate_verifies_manifest_and_rollback(tmp_path):
     assert (root/"current"/"marker").read_text()=="v1"
     assert i.stage_update(b,"v2").ok and i.activate("v2").ok
     assert (root/"current"/"marker").read_text()=="v2"
-    assert i.rollback("v1").ok and (root/"current"/"marker").read_text()=="v1"
+    assert i.rollback("v1").ok
+    assert (root/"current"/"marker").read_text()=="v1"
 
-def test_activate_rejects_tampered_version(tmp_path):
+def test_manifest_tamper_blocks_activation(tmp_path):
     root=tmp_path/"toolkit"; i=ToolkitInstaller(root); i.install()
-    source=tmp_path/"v1"; source.mkdir(); (source/"marker").write_text("good")
-    assert i.stage_update(source,"v1").ok
+    src=tmp_path/"v1"; src.mkdir(); (src/"marker").write_text("good")
+    assert i.stage_update(src,"v1").ok
     (root/"versions"/"v1"/"marker").write_text("tampered")
     r=i.activate("v1")
-    assert not r.ok and "checksum" in r.error.lower()
+    assert not r.ok and "checksum mismatch" in r.error
