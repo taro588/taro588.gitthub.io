@@ -4,23 +4,35 @@ import argparse
 import json
 
 from .launcher import Launcher
-from .launcher_gui import LauncherApp
+
 
 def _json_default(value):
     return str(value)
 
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="gameart")
-    parser.add_argument("command", choices=["doctor", "detect", "start", "repair"], nargs="?", default="start")
+    parser.add_argument(
+        "command",
+        choices=["doctor", "detect", "start", "repair"],
+        nargs="?",
+        default="start",
+    )
     args = parser.parse_args()
     launcher = Launcher()
 
     if args.command == "start":
+        # GUI is optional. Keep CLI diagnostics usable on headless machines
+        # and on Python builds without tkinter.
+        from .launcher_gui import LauncherApp
         LauncherApp(launcher).run()
         return
 
     if args.command == "detect":
-        payload = [{"name": d.name, "version": d.version, "path": str(d.path)} for d in launcher.detect_dcc()]
+        payload = [
+            {"name": d.name, "version": d.version, "path": str(d.path)}
+            for d in launcher.detect_dcc()
+        ]
         print(json.dumps(payload, indent=2, ensure_ascii=False, default=_json_default))
         return
 
@@ -29,6 +41,7 @@ def main() -> None:
         return
 
     print(json.dumps(launcher.repair(), indent=2, ensure_ascii=False, default=_json_default))
+
 
 if __name__ == "__main__":
     main()
