@@ -88,11 +88,12 @@ class InstallerApp:
         if self.host_vars["3ds_max"].get(): hosts["3ds_max"]=hi.register_max().__dict__
         ok=all(x["ok"] for x in results) and all(x["ok"] for x in hosts.values())
         check=self.post_install_check(root) if ok else {"ok":False,"error":"Plugin or host installation failed."}
-        if ok and check["ok"]: self._write_state(root)
-        elif ok and not check["ok"]:
+        smoke=self.startup_smoke_test() if ok and check["ok"] else {"ok":False,"error":"Skipped because preflight checks failed."}
+        if ok and check["ok"] and smoke["ok"]: self._write_state(root)
+        elif ok and (not check["ok"] or not smoke["ok"]):
             self.write("安装后自检失败，开始回滚…")
             rb=installer.rollback()
-            return {"ok":False,"installed":False,"rolled_back":rb.ok,"rollback_error":rb.error,"checks":check}
+            return {"ok":False,"installed":False,"rolled_back":rb.ok,"rollback_error":rb.error,"checks":check,"smoke_test":smoke}
         return {"ok":ok,"installed":ok,"root":str(root),"plugins":results,"hosts":hosts,"checks":check}
     def post_install_check(self, root):
         checks = {}
@@ -100,10 +101,20 @@ class InstallerApp:
             checks["installer_core_import"] = importlib.import_module("src.core.installer") is not None
             checks["plugin_installer_import"] = importlib.import_module("src.core.plugin_installer") is not None
             checks["host_integration_import"] = importlib.import_module("src.core.host_integration") is not None
+            checks["launcher_import"] = importlib.import_module("src.launcher") is not None
             checks["payload_present"] = (root / "current").exists()
         except Exception as exc:
             return {"ok":False,"checks":checks,"error":f"{type(exc).__name__}: {exc}"}
         return {"ok":all(checks.values()),"checks":checks}
+
+    def startup_smoke_test(self):
+        try:
+            launcher_mod=importlib.import_module("src.launcher")
+            launcher=launcher_mod.Launcher()
+            result=launcher.start()
+            return {"ok":result.get("status")=="ready","result":result}
+        except Exception as exc:
+            return {"ok":False,"error":f"{type(exc).__name__}: {exc}"}
 
     def _write_state(self,root):
         (root/"installed.json").write_text('{"product":"GameArt AI Toolkit","installed":true}\n',encoding="utf-8")
