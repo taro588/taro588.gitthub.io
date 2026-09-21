@@ -1,11 +1,14 @@
 """Standalone one-click Windows installer UI."""
 from __future__ import annotations
 import os, shutil, sys, threading, tkinter as tk
+import tempfile, time
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from src.core.installer import ToolkitInstaller
 from src.core.plugin_installer import PluginInstaller
 from src.core.host_integration import HostIntegrator
+
+APP_VERSION="0.1.0-alpha"
 
 PLUGINS=[("texture-importer","Maya"),("totex","3ds Max"),("MayaToPainter","Maya"),("SubstancePainterToMaya","Maya"),("rename-lowhigh-proximity","3ds Max"),("fal-texture-pbr-generator","Shared"),("Procedural-PBR","Shared"),("SubstanceDesignerTools","Shared")]
 
@@ -34,7 +37,7 @@ class InstallerApp:
         for i,(n,h) in enumerate(PLUGINS):
             v=tk.BooleanVar(); self.vars[n]=v; ttk.Checkbutton(g,text=f"{n}  [{h}]",variable=v).grid(row=i//2,column=i%2,sticky="w",padx=8,pady=3)
         b=ttk.Frame(o); b.pack(fill="x",pady=14)
-        self.btn=ttk.Button(b,text="一键安装 / 更新",command=self.start_install); self.btn.pack(side="left")
+        self.btn=ttk.Button(b,text="一键安装 / 更新",command=self.start_install); self.btn.pack(side="left"); ttk.Button(b,text="回滚上一版本",command=lambda:self._run(self.rollback)).pack(side="left",padx=6)
         ttk.Button(b,text="修复",command=lambda:self._run(self.repair)).pack(side="left",padx=6)
         ttk.Button(b,text="卸载",command=self.start_uninstall).pack(side="left")
         ttk.Button(b,text="检查环境",command=lambda:self._run(self.doctor)).pack(side="left",padx=6)
@@ -74,6 +77,10 @@ class InstallerApp:
         return {"ok":ok,"installed":ok,"root":str(root),"plugins":results,"hosts":hosts}
     def _write_state(self,root):
         (root/"installed.json").write_text('{"product":"GameArt AI Toolkit","installed":true}\n',encoding="utf-8")
+    def rollback(self):
+        r=ToolkitInstaller(self.install_root).rollback()
+        return {"ok":r.ok,"action":"rollback","version":r.version,"error":r.error}
+
     def repair(self):
         r=ToolkitInstaller(self.install_root).repair(); return {"ok":r.ok,"action":"repair","error":r.error}
     def start_uninstall(self):
