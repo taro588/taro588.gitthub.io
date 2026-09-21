@@ -147,6 +147,11 @@ class PluginInstaller:
             finally:
                 shutil.rmtree(staging, ignore_errors=True)
         except Exception as exc:
+            try:
+                if "destination" in locals() and destination.exists():
+                    shutil.rmtree(destination)
+            except OSError:
+                pass
             return PluginInstallResult(
                 False,
                 name,
