@@ -138,6 +138,7 @@ class PluginInstaller:
                     "source": source,
                     "branch": branch,
                     "path": str(destination),
+                    "entrypoints": self._detect_entrypoints(destination),
                 }
                 manifest_path = self._owned(self.manifest_root / f"{name}.json")
                 tmp_manifest = self._owned(self.manifest_root / f".{name}.tmp")
@@ -160,6 +161,22 @@ class PluginInstaller:
                 source,
             )
 
+
+
+    def _detect_entrypoints(self, root: Path) -> list[dict[str, str]]:
+        """Detect entry points without importing or executing plugin code."""
+        result = []
+        for path in sorted(root.rglob("*")):
+            if not path.is_file():
+                continue
+            rel = str(path.relative_to(root))
+            if path.suffix.lower() == ".py":
+                result.append({"type": "python", "path": rel})
+            elif path.suffix.lower() == ".mel":
+                result.append({"type": "maya_script", "path": rel})
+            elif path.suffix.lower() in {".ms", ".mcr"}:
+                result.append({"type": "maxscript", "path": rel})
+        return result[:100]
     def uninstall(self, name: str) -> PluginInstallResult:
         try:
             spec = self.resolve(name)
