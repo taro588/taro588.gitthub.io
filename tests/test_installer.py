@@ -38,3 +38,45 @@ def test_manifest_tamper_blocks_activation(tmp_path):
     (root/"versions"/"v1"/"marker").write_text("tampered")
     r=i.activate("v1")
     assert not r.ok and "checksum mismatch" in r.error
+
+
+def test_activate_rolls_back_if_state_write_fails(tmp_path, monkeypatch):
+    root=tmp_path/"toolkit"; i=ToolkitInstaller(root); i.install()
+    a=tmp_path/"v1"; a.mkdir(); (a/"marker").write_text("v1")
+    b=tmp_path/"v2"; b.mkdir(); (b/"marker").write_text("v2")
+    assert i.stage_update(a,"v1").ok and i.activate("v1").ok
+
+    def fail_state(version):
+        raise OSError("state storage failure")
+    monkeypatch.setattr(i, "_write_state", fail_state)
+    result=i.stage_update(b,"v2")
+    assert result.ok
+    result=i.activate("v2")
+    assert not result.ok
+    assert (root/"current"/"marker").read_text()=="v1"
+    assert i._read_current_version()=="v1"
+
+def test_rollback_prefers_newest_backup_by_mtime(tmp_path):
+    root=tmp_path/"toolkit"; i=ToolkitInstaller(root); i.install()
+    for version in ("v1","v2","v10"):
+        src=tmp_path/version; src.mkdir(); (src/"marker").write_text(version)
+        assert i.stage_update(src,version).ok
+        assert i.activate(version).ok
+    result=i.rollback()
+    assert result.ok and result.version=="v2"
+    assert (root/"current"/"marker").read_text()=="v2"
+
+def test_rollback_rolls_back_if_state_write_fails(tmp_path, monkeypatch):
+    root=tmp_path/"toolkit"; i=ToolkitInstaller(root); i.install()
+    a=tmp_path/"v1"; a.mkdir(); (a/"marker").write_text("v1")
+    b=tmp_path/"v2"; b.mkdir(); (b/"marker").write_text("v2")
+    assert i.stage_update(a,"v1").ok and i.activate("v1").ok
+    assert i.stage_update(b,"v2").ok and i.activate("v2").ok
+
+    def fail_state(version):
+        raise OSError("state storage failure")
+    monkeypatch.setattr(i, "_write_state", fail_state)
+    result=i.rollback()
+    assert not result.ok
+    assert (root/"current"/"marker").read_text()=="v2"
+    assert i._read_current_version()=="v2"
