@@ -1,32 +1,21 @@
 
 
-## 第四批：游戏资产生产 / LOD / Unreal / FBX
+## 第五批：PBR 贴图 / 烘焙 / Substance Painter
 
-### 16. Unreal-Maya-Pipeline — Maya
-上游：https://github.com/arunprksm/Unreal-Maya-Pipeline
-Maya → Unreal 的资产流程参考，适合研究命名、导出和引擎接入自动化。
+### 22. texture-importer — Maya / 3ds Max
+MIT。根据文件夹中的贴图自动识别并创建材质节点网络，适合 BaseColor / Normal / Roughness / Metallic / AO 自动接材质。citeturn0search13
 
-### 17. 3dsMax Asset Tools for Unreal Engine — 3ds Max
-上游：https://github.com/dexise/3dsMax-Asset-Tools-for-Unreal-Engine
-GPL-3.0。面向 3ds Max → Unreal 的资产制作/导出辅助工具。作为独立 Submodule 保存，后续直接复用代码前需要遵守 GPL。
+### 23. ToTex — 3ds Max
+3ds Max MaxScript 纹理烘焙工具，可快速将多张纹理 Bake 到指定文件夹。citeturn0search6
 
-### 18. LOD Generator Tool Maya — Maya
-上游：https://github.com/NguyenNP-24/LOD-Generator-Tool-Maya
-GPL-3.0。用于 Maya 自动生成 LOD，适合研究批量 LOD 工作流。
+### 24. MayaToPainter — Maya
+MIT。Maya → Substance Painter 桥接，支持高低模烘焙准备、自动命名和更新模型。citeturn0search2
 
-### 19. Automated LOD Tool — Maya
-上游：https://github.com/SaiiPrashanth/Automated_LOD_Tool
-MIT。自动化 LOD 生成工具，可作为后续统一 LOD 面板的参考。
+### 25. SubstancePainterToMaya — Maya
+自动读取 Substance Painter 输出的贴图并连接到 Maya 材质，支持 Arnold、VRay、Redshift、Renderman 和 UDIM。citeturn0search1
 
-### 20. LeeAutoExportFBX — Maya
-上游：https://github.com/leetdvn/LeeAutoExportFBX
-自动 FBX 导出工具，适合研究 Maya 批量导出和游戏资产发布流程。
+### 26. rename-lowhigh-proximity — 3ds Max
+MIT。根据模型空间位置帮助匹配/重命名 low/high poly 对，专门用于烘焙准备。citeturn0search12
 
-### 21. 3dsMax FBX Conform + Batch Render — 3ds Max
-上游：https://github.com/Joyxt/3dsmax-fbx-conform_and_batch-render
-用于 FBX 规范化和批量处理/渲染，适合接入统一资产发布流程。
-
-## 第四批重点工作流
-**模型 → LOD → FBX → Unreal/Unity → 自动检查 → 批量发布**。
-
-下一阶段可以把这些零散工具抽象成自己的统一 UI，而不是让最终用户分别安装多个插件。
+## PBR 自动化方向
+Low/High 自动匹配 → Bake → BaseColor/Normal/AO/Roughness/Metallic → 自动导入材质 → UDIM → 引擎材质 → 发布。
