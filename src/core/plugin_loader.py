@@ -64,3 +64,25 @@ class PluginLoader:
             return PluginLoadResult(True,name,"loaded")
         except Exception as exc:
             return PluginLoadResult(False,name,"quarantined",f"{type(exc).__name__}: {exc}")
+
+    def load_maya_script(self, name: str, script_file: str) -> PluginLoadResult:
+        """Validate a Maya script entry point without executing it."""
+        manifest_path = self.manifest_root / f"{name}.json"
+        try:
+            data = json.loads(manifest_path.read_text(encoding="utf-8"))
+            root = Path(data["path"]).expanduser().resolve()
+            root.relative_to(self.root)
+            target = (root / script_file).resolve()
+            target.relative_to(root)
+            if not target.is_file():
+                raise FileNotFoundError(f"Maya script entry point not found: {target}")
+            return PluginLoadResult(True, name, "ready")
+        except Exception as exc:
+            return PluginLoadResult(False, name, "quarantined", f"{type(exc).__name__}: {exc}")
+
+    def run_maxscript(self, name: str, script_file: str) -> PluginLoadResult:
+        """MAXScript requires an explicit host bridge and is never auto-executed."""
+        return PluginLoadResult(
+            False, name, "quarantined",
+            "MAXScript execution requires an explicit 3ds Max host bridge.",
+        )
