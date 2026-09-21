@@ -28,3 +28,8 @@ def test_dcc_environment_does_not_force_native_imports():
     env=os.environ.copy(); env.pop("MAYA_LOCATION",None); env.pop("ADSK_3DSMAX_ROOT",None)
     out=run("-c","from src.launcher import Launcher; print(Launcher().dcc_status())",env=env)
     assert out.returncode==0, out.stderr
+
+def test_plugin_installer_import_without_git_operation():
+    out=run("-c","from src.core.plugin_installer import PluginInstaller; print(PluginInstaller('x').resolve('texture-importer')['host'])")
+    assert out.returncode==0, out.stderr
+    assert out.stdout.strip()=="maya"
