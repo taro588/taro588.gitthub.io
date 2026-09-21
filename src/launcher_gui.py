@@ -1,20 +1,35 @@
-"""Minimal cross-platform launcher UI.
+"""Optional Tk launcher UI.
 
-Uses tkinter from the Python standard library. It is deliberately lightweight:
-the launcher can start even when Maya/3ds Max are not installed.
+Tkinter is imported lazily so CLI diagnostics and DCC adapters remain usable
+when the Python runtime has no GUI support or the host is headless.
 """
 from __future__ import annotations
 
 import json
-import tkinter as tk
-from tkinter import messagebox
 from .launcher import Launcher
 
 
 class LauncherApp:
     def __init__(self, launcher: Launcher | None = None) -> None:
+        try:
+            import tkinter as tk
+            from tkinter import messagebox
+        except Exception as exc:
+            raise RuntimeError(
+                "Tkinter is unavailable; use the CLI commands "
+                "'doctor', 'detect', or 'repair'."
+            ) from exc
+
+        self.tk = tk
+        self.messagebox = messagebox
         self.launcher = launcher or Launcher()
-        self.root = tk.Tk()
+        try:
+            self.root = tk.Tk()
+        except Exception as exc:
+            raise RuntimeError(
+                "The launcher UI could not start in this environment."
+            ) from exc
+
         self.root.title("GameArt AI Toolkit")
         self.root.geometry("760x520")
         self.root.minsize(680, 460)
@@ -23,6 +38,7 @@ class LauncherApp:
         self._build()
 
     def _build(self) -> None:
+        tk = self.tk
         frame = tk.Frame(self.root, padx=18, pady=18)
         frame.pack(fill="both", expand=True)
         tk.Label(frame, text="GameArt AI Toolkit", font=("Segoe UI", 20, "bold")).pack(anchor="w")
@@ -38,8 +54,8 @@ class LauncherApp:
         self.output.pack(fill="both", expand=True)
 
     def _show(self, payload: object) -> None:
-        self.output.delete("1.0", tk.END)
-        self.output.insert(tk.END, json.dumps(payload, ensure_ascii=False, indent=2, default=str))
+        self.output.delete("1.0", self.tk.END)
+        self.output.insert(self.tk.END, json.dumps(payload, ensure_ascii=False, indent=2, default=str))
         self.status.set("Completed")
 
     def detect(self) -> None:
@@ -48,14 +64,14 @@ class LauncherApp:
             self._show(result)
         except Exception as exc:
             self.status.set("Error")
-            messagebox.showerror("Detection error", str(exc))
+            self.messagebox.showerror("Detection error", str(exc))
 
     def doctor(self) -> None:
         try:
             self._show(self.launcher.doctor())
         except Exception as exc:
             self.status.set("Error")
-            messagebox.showerror("Doctor error", str(exc))
+            self.messagebox.showerror("Doctor error", str(exc))
 
     def run(self) -> None:
         self.root.mainloop()
