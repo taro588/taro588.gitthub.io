@@ -23,3 +23,11 @@ def test_plugin_quarantine(tmp_path):
     r = PluginRegistry([PluginSpec("x", tmp_path)])
     r.disable("x")
     assert r.health()[0].state == "disabled"
+
+
+def test_plugin_quarantine_reason_is_reported(tmp_path):
+    r=PluginRegistry([PluginSpec("x", tmp_path)])
+    r.disable("x", "load failed: boom")
+    h=r.health()[0]
+    assert h.state=="disabled"
+    assert h.reason=="load failed: boom"
