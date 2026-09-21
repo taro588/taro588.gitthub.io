@@ -32,16 +32,24 @@ class ToolkitInstaller:
         return {"files":files}
 
     def _write_state(self,version):
-        self.state.write_text(json.dumps({"current":version},indent=2),encoding="utf-8")
+        tmp=self.root/".state.tmp"
+        tmp.write_text(json.dumps({"current":version},indent=2),encoding="utf-8")
+        os.replace(tmp,self.state)
+
+    def _read_current_version(self):
+        try:
+            return json.loads(self.state.read_text(encoding="utf-8")).get("current")
+        except Exception:
+            return None
 
     def install(self):
         try:
             for d in (self.current,self.versions,self.backups): d.mkdir(parents=True,exist_ok=True)
-            return InstallResult(True,"install",str(self.root))
+            return InstallResult(True,"install",str(self.root),version=self._read_current_version())
         except Exception as exc: return InstallResult(False,"install",str(self.root),f"{type(exc).__name__}: {exc}")
 
     def repair(self):
-        r=self.install(); return InstallResult(r.ok,"repair",r.root,r.error)
+        r=self.install(); return InstallResult(r.ok,"repair",r.root,r.error,r.version)
 
     def stage_update(self,source,version=None):
         try:
@@ -66,7 +74,7 @@ class ToolkitInstaller:
         return True,None
 
     def activate(self,version):
-        staging=None; old_current=None
+        staging=None; old_current=None; old_version=self._read_current_version()
         try:
             target=self._owned(self.versions/version)
             if not target.is_dir(): raise ValueError(f"Version does not exist: {version}")
@@ -76,7 +84,8 @@ class ToolkitInstaller:
             staged_current=staging/"current"
             shutil.copytree(target,staged_current,ignore=shutil.ignore_patterns("manifest.json"))
             if self.current.exists():
-                old_current=self.backups/(time.strftime("%Y%m%d-%H%M%S-%f")+"-previous")
+                backup_name=f"{old_version or 'unknown'}-{time.time_ns()}-previous"
+                old_current=self.backups/backup_name
                 os.replace(self.current,old_current)
             os.replace(staged_current,self.current)
             self._write_state(version)
@@ -95,12 +104,14 @@ class ToolkitInstaller:
             backups=sorted((p for p in self.backups.iterdir() if p.is_dir()),reverse=True) if self.backups.exists() else []
             if not backups: raise ValueError("No rollback backup is available.")
             backup=backups[0]
+            name=backup.name
+            previous=name.rsplit("-previous",1)[0]
             if self.current.exists(): shutil.rmtree(self.current)
             os.replace(backup,self.current)
-            self._write_state(backup.name)
-            return InstallResult(True,"rollback",str(self.root),version=backup.name)
+            self._write_state(previous if previous!="unknown" else None)
+            return InstallResult(True,"rollback",str(self.root),version=previous if previous!="unknown" else None)
         except Exception as exc: return InstallResult(False,"rollback",str(self.root),f"{type(exc).__name__}: {exc}")
-
+    
     def uninstall(self):
         try:
             if self.root.exists(): shutil.rmtree(self.root)
