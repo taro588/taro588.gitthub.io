@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import tempfile
 from urllib.parse import urlparse
+import platform
 
 @dataclass(frozen=True)
 class PluginInstallResult:
@@ -144,6 +145,7 @@ class PluginInstaller:
                 tmp_manifest = self._owned(self.manifest_root / f".{name}.tmp")
                 tmp_manifest.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
                 os.replace(tmp_manifest, manifest_path)
+                self.generate_host_loaders()
                 return PluginInstallResult(True, name, str(destination), source=source)
             finally:
                 shutil.rmtree(staging, ignore_errors=True)
@@ -177,6 +179,33 @@ class PluginInstaller:
             elif path.suffix.lower() in {".ms", ".mcr"}:
                 result.append({"type": "maxscript", "path": rel})
         return result[:100]
+    def generate_host_loaders(self) -> list[str]:
+        """Generate Toolkit-owned host loader files; never modify DCC installs."""
+        generated = []
+        for host in ("maya", "3ds_max"):
+            host_root = self._owned(self.root / "host-loaders" / host)
+            host_root.mkdir(parents=True, exist_ok=True)
+            if host == "maya":
+                content = '''# GameArt Toolkit Maya loader.
+# Installed by the Toolkit; does not modify Maya installation files.
+import os
+from pathlib import Path
+
+TOOLKIT_ROOT = Path(os.environ.get("GAMEART_TOOLKIT_ROOT", "")).expanduser()
+if TOOLKIT_ROOT:
+    os.environ.setdefault("GAMEART_TOOLKIT_ROOT", str(TOOLKIT_ROOT))
+'''
+                target = host_root / "gameart_loader.py"
+            else:
+                content = '''-- GameArt Toolkit 3ds Max loader.
+-- This file is generated inside the Toolkit and must be explicitly
+-- registered through the Toolkit/host integration layer.
+'''
+                target = host_root / "gameart_loader.ms"
+            target.write_text(content, encoding="utf-8")
+            generated.append(str(target))
+        return generated
+
     def uninstall(self, name: str) -> PluginInstallResult:
         try:
             spec = self.resolve(name)
