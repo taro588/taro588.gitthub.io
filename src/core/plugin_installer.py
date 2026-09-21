@@ -14,6 +14,7 @@ import subprocess
 import tempfile
 from urllib.parse import urlparse
 import platform
+from .host_integration import HostIntegrator
 
 @dataclass(frozen=True)
 class PluginInstallResult:
@@ -63,6 +64,7 @@ class PluginInstaller:
         self.root = Path(root).expanduser().resolve()
         self.plugin_root = self.root / "plugins"
         self.manifest_root = self.root / "plugin-manifests"
+        self.host = HostIntegrator(self.root)
 
     def _owned(self, path: str | Path) -> Path:
         target = Path(path).expanduser().resolve()
@@ -146,6 +148,14 @@ class PluginInstaller:
                 tmp_manifest.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
                 os.replace(tmp_manifest, manifest_path)
                 self.generate_host_loaders()
+                if host == "maya":
+                    integration = self.host.register_maya()
+                elif host == "3ds_max":
+                    integration = self.host.register_max()
+                else:
+                    integration = None
+                if integration is not None and not integration.ok:
+                    raise RuntimeError(f"Host registration failed: {integration.error}")
                 return PluginInstallResult(True, name, str(destination), source=source)
             finally:
                 shutil.rmtree(staging, ignore_errors=True)
