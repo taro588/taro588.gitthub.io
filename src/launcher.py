@@ -10,6 +10,7 @@ from .maya.adapter import MayaAdapter
 from .max.adapter import MaxAdapter
 from .core.plugins import PluginRegistry
 from .core.installer import ToolkitInstaller
+from .core.plugin_installer import PluginInstaller
 
 
 @dataclass
@@ -37,6 +38,7 @@ class Launcher:
         self.dcc.register("3ds_max", DCCSession(MaxAdapter()))
         self.plugins = PluginRegistry()
         self.installer = ToolkitInstaller(self.config.install_root)
+        self.plugin_installer = PluginInstaller(self.config.install_root)
 
     def health_check(self):
         root = self.config.install_root
@@ -119,6 +121,7 @@ class Launcher:
             "dcc_failures": failures,
             "dcc_warnings": dcc_warnings,
             "plugins": [h.__dict__ for h in self.plugins.health()],
+            "installed_plugins": self.plugin_installer.installed(),
         }
 
     def repair(self):
