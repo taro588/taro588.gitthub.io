@@ -1,8 +1,7 @@
 """Standalone one-click Windows installer UI."""
 from __future__ import annotations
 import os, shutil, sys, threading, tkinter as tk
-import tempfile, time, importlib, json, urllib.request
-import tempfile, time
+import tempfile, time, importlib, json, urllib.request, hashlib, subprocess
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from src.core.installer import ToolkitInstaller
@@ -44,7 +43,7 @@ class InstallerApp:
         self.btn=ttk.Button(b,text="一键安装 / 更新",command=self.start_install); self.btn.pack(side="left"); ttk.Button(b,text="回滚上一版本",command=lambda:self._run(self.rollback)).pack(side="left",padx=6)
         ttk.Button(b,text="修复",command=lambda:self._run(self.repair)).pack(side="left",padx=6)
         ttk.Button(b,text="卸载",command=self.start_uninstall).pack(side="left")
-        ttk.Button(b,text="检查环境",command=lambda:self._run(self.doctor)).pack(side="left",padx=6); ttk.Button(b,text="检查更新",command=lambda:self._run(self.check_update)).pack(side="left")
+        ttk.Button(b,text="检查环境",command=lambda:self._run(self.doctor)).pack(side="left",padx=6); ttk.Button(b,text="检查更新",command=lambda:self._run(self.check_update)).pack(side="left"); ttk.Button(b,text="一键更新",command=lambda:self._run(self.download_and_update)).pack(side="left",padx=6)
         ttk.Button(b,text="退出",command=self.root.destroy).pack(side="right")
         self.progress=ttk.Progressbar(o,mode="indeterminate"); self.progress.pack(fill="x"); ttk.Label(o,textvariable=self.status).pack(fill="x",pady=8)
         self.log=tk.Text(o,height=18); self.log.pack(fill="both",expand=True)
@@ -117,6 +116,37 @@ class InstallerApp:
             return {"ok":bool(latest),"current":APP_VERSION,"latest":latest,"update_available":latest!=APP_VERSION,"release_url":data.get("html_url")}
         except Exception as exc:
             return {"ok":False,"current":APP_VERSION,"error":f"{type(exc).__name__}: {exc}"}
+
+    def download_and_update(self):
+        try:
+            req=urllib.request.Request(UPDATE_URL,headers={"Accept":"application/vnd.github+json","User-Agent":"GameArtToolkit"})
+            with urllib.request.urlopen(req,timeout=12) as response:
+                data=json.load(response)
+            tag=str(data.get("tag_name","")).lstrip("v")
+            if not tag or tag==APP_VERSION:
+                return {"ok":True,"updated":False,"current":APP_VERSION,"latest":tag or APP_VERSION}
+            assets=data.get("assets") or []
+            asset=next((a for a in assets if str(a.get("name","")).lower().endswith(".exe")),None)
+            if not asset:
+                return {"ok":False,"error":"最新 Release 没有找到 Windows EXE。"}
+            update_dir=Path(tempfile.gettempdir())/"GameArtToolkitUpdate"
+            update_dir.mkdir(parents=True,exist_ok=True)
+            exe=update_dir/f"GameArtToolkitInstaller-{tag}.exe"
+            req=urllib.request.Request(asset["browser_download_url"],headers={"User-Agent":"GameArtToolkit"})
+            with urllib.request.urlopen(req,timeout=120) as response, exe.open("wb") as out:
+                shutil.copyfileobj(response,out)
+            if exe.stat().st_size < 1000000:
+                exe.unlink(missing_ok=True)
+                return {"ok":False,"error":"下载的安装器文件异常。"}
+            sha=hashlib.sha256(exe.read_bytes()).hexdigest()
+            self.write(f"新版本 {tag} 下载完成，SHA-256={sha}")
+            if os.name=="nt":
+                subprocess.Popen([str(exe)],close_fds=True)
+                self.root.after(500,self.root.destroy)
+                return {"ok":True,"updated":True,"latest":tag,"installer":str(exe),"sha256":sha}
+            return {"ok":True,"updated":False,"downloaded":True,"latest":tag,"installer":str(exe),"sha256":sha}
+        except Exception as exc:
+            return {"ok":False,"error":f"{type(exc).__name__}: {exc}"}
 
     def startup_smoke_test(self):
         try:
