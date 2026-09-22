@@ -99,6 +99,15 @@ class ToolkitInstaller:
         if not isinstance(files, dict):
             return False, "Invalid version manifest: files must be an object."
 
+        for rel in files:
+            if not isinstance(rel, str) or Path(rel).is_absolute():
+                return False, f"Invalid manifest path: {rel!r}"
+            p = (target / rel).resolve()
+            try:
+                p.relative_to(target)
+            except ValueError:
+                return False, f"Invalid manifest path: {rel!r}"
+
         expected = set(files)
         actual = {
             str(p.relative_to(target))
@@ -129,7 +138,7 @@ class ToolkitInstaller:
         """Move current aside and return its backup path, or None."""
         if not self.current.exists():
             return None
-        backup_name = f"{version or 'unknown'}-{time.time_ns()}-previous"
+        backup_name = f"{version or 'unknown'}--{time.time_ns()}-previous"
         backup = self.backups / backup_name
         os.replace(self.current, backup)
         return backup
@@ -196,6 +205,8 @@ class ToolkitInstaller:
         # order we control here.
         backup = max(backups, key=lambda p: p.stat().st_mtime_ns)
         previous = backup.name.rsplit("-previous", 1)[0]
+        if "--" in previous:
+            previous = previous.rsplit("--", 1)[0]
         if previous == "unknown":
             previous = None
 
