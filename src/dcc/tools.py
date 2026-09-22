@@ -14,7 +14,10 @@ def build_dcc_tool_registry(manager: DCCManager) -> ToolRegistry:
         return session.info()
 
     def scene_ping(dcc: str) -> dict[str, Any]:
-        return manager.execute(dcc, "ping")
+        result = manager.execute(dcc, "ping")
+        if not result.get("ok"):
+            raise RuntimeError(result.get("error") or "DCC ping failed")
+        return result
 
     registry.register(ToolSpec(
         "scene.get_info",
