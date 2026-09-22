@@ -25,6 +25,8 @@ class InstallerApp:
         self.root=tk.Tk(); self.root.title("GameArt AI Toolkit"); self.root.geometry("900x720"); self.root.minsize(820,640)
         self.install_root=Path(os.environ.get("GAMEART_TOOLKIT_HOME",Path.home()/"GameArtAI"/"Toolkit")).expanduser().resolve()
         self.status=tk.StringVar(value="Ready"); self._build()
+        if "--auto-install" in sys.argv:
+            self.root.after(300, self.start_install)
     def _build(self):
         o=ttk.Frame(self.root,padding=22); o.pack(fill="both",expand=True)
         ttk.Label(o,text="GameArt AI Toolkit",font=("Segoe UI",22,"bold")).pack(anchor="w")
