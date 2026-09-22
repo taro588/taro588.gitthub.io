@@ -4,7 +4,7 @@ from PyInstaller.building.datastruct import Tree
 from PyInstaller.utils.hooks import collect_submodules
 
 hiddenimports=collect_submodules("src")
-datas=[Tree("src", prefix="src")]
+datas=[("src", "src")]
 
 a=Analysis(
     ["src/installer_app.py"],
