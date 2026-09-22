@@ -89,12 +89,13 @@ class InstallerApp:
         ok=all(x["ok"] for x in results) and all(x["ok"] for x in hosts.values())
         check=self.post_install_check(root) if ok else {"ok":False,"error":"Plugin or host installation failed."}
         smoke=self.startup_smoke_test() if ok and check["ok"] else {"ok":False,"error":"Skipped because preflight checks failed."}
+        shortcuts=self.create_shortcuts(root) if ok and check["ok"] and smoke["ok"] else {"ok":False,"skipped":True}
         if ok and check["ok"] and smoke["ok"]: self._write_state(root)
         elif ok and (not check["ok"] or not smoke["ok"]):
             self.write("安装后自检失败，开始回滚…")
             rb=installer.rollback()
             return {"ok":False,"installed":False,"rolled_back":rb.ok,"rollback_error":rb.error,"checks":check,"smoke_test":smoke}
-        return {"ok":ok,"installed":ok,"root":str(root),"plugins":results,"hosts":hosts,"checks":check}
+        return {"ok":ok,"installed":ok,"root":str(root),"plugins":results,"hosts":hosts,"checks":check,"shortcuts":shortcuts}
     def post_install_check(self, root):
         checks = {}
         try:
@@ -154,6 +155,30 @@ class InstallerApp:
             launcher=launcher_mod.Launcher()
             result=launcher.start()
             return {"ok":result.get("status")=="ready","result":result}
+        except Exception as exc:
+            return {"ok":False,"error":f"{type(exc).__name__}: {exc}"}
+
+    def create_shortcuts(self, root):
+        if os.name != "nt":
+            return {"ok":True,"skipped":True}
+        try:
+            from win32com.client import Dispatch
+            start_menu=Path(os.environ.get("APPDATA","")) / "Microsoft/Windows/Start Menu/Programs" / "GameArt AI Toolkit"
+            desktop=Path.home() / "Desktop"
+            start_menu.mkdir(parents=True,exist_ok=True)
+            target=sys.executable if getattr(sys,"frozen",False) else str(Path(__file__).resolve())
+            args="" if getattr(sys,"frozen",False) else str(Path(__file__).resolve())
+            def make(link):
+                shell=Dispatch("WScript.Shell")
+                shortcut=shell.CreateShortcut(str(link))
+                shortcut.TargetPath=target
+                if args: shortcut.Arguments=args
+                shortcut.WorkingDirectory=str(root)
+                shortcut.IconLocation=target
+                shortcut.save()
+            make(start_menu / "GameArt AI Toolkit.lnk")
+            make(desktop / "GameArt AI Toolkit.lnk")
+            return {"ok":True}
         except Exception as exc:
             return {"ok":False,"error":f"{type(exc).__name__}: {exc}"}
 
